@@ -14,9 +14,8 @@ BAD_KEYWORDS = {
     "psa 9",
     "psa9",
     "equivalent",
-    "9.5"
+    "9.5",
 }
-
 
 
 def main():
@@ -52,26 +51,32 @@ def main():
 def get_access_token() -> str:
     """
     Docstring for get_access_token
-    
+
     :return: acess token for eBay API
     :rtype: str
     """
-    encoded_credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
+    encoded_credentials = base64.b64encode(
+        f"{CLIENT_ID}:{CLIENT_SECRET}".encode()
+    ).decode()
 
-    response = requests.post(url="https://api.ebay.com/identity/v1/oauth2/token", headers={
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Basic {encoded_credentials}"
-    },
-    data={
-        "grant_type": "client_credentials",
-        "scope": "https://api.ebay.com/oauth/api_scope"
-    })
+    response = requests.post(
+        url="https://api.ebay.com/identity/v1/oauth2/token",
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": f"Basic {encoded_credentials}",
+        },
+        data={
+            "grant_type": "client_credentials",
+            "scope": "https://api.ebay.com/oauth/api_scope",
+        },
+    )
     return response.json()["access_token"]
 
-def ebay_search(access_token:str, query: str):
+
+def ebay_search(access_token: str, query: str):
     """
     Docstring for ebay_search
-    
+
     :param access_token: acess token for eBay API
     :type access_token: str
     :param query: search query which user wants to search for
@@ -82,15 +87,13 @@ def ebay_search(access_token:str, query: str):
         headers={
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB"
+            "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
         },
-        params={
-            "q": query,
-            "limit": "10",
-            "sort": "price"
-        }
+        params={"q": query, "limit": "10", "sort": "price"},
     )
-    list_of_items = response.json() # if itemSummaries not in response.json() use empty list instead
+    list_of_items = (
+        response.json()
+    )  # if itemSummaries not in response.json() use empty list instead
 
     price_list = {}
     for item in list_of_items.get("itemSummaries", []):
@@ -107,7 +110,6 @@ def ebay_search(access_token:str, query: str):
             if bad.lower() in title.lower():
                 del price_list[title]
 
-
     sum = 0
     for price in price_list.values():
         sum += float(price)
@@ -120,5 +122,7 @@ def ebay_search(access_token:str, query: str):
         return float(average_price)
 
     return price_list
+
+
 if __name__ == "__main__":
     main()
