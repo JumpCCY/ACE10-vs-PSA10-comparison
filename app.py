@@ -124,16 +124,17 @@ def ebay_search(access_token: str, query: str):
         res = list(price_list.values())[0]
         return float(res)
 
+
 def ebay_average_sold(query: str) -> float:
     """
     Docstring for ebay_average_sold
-    
+
     :param query: search for recently sold item on eBay and return the average price
     :type query: str
     :return: Average price of recently 10 sold items
     :rtype: float
     """
-    
+
     query = query.replace(" ", "+")
     url = f"https://www.ebay.co.uk/sch/i.html?_nkw={query}+psa+10&_sacat=0&_from=R40&LH_Sold=1&rt=nc&LH_PrefLoc=1"
 
@@ -161,6 +162,7 @@ def ebay_average_sold(query: str) -> float:
     price_list = remove_outliners(price_list)
     average_price = sum(price_list) / len(price_list)
     return average_price
+
 
 def remove_outliners(price_list: list) -> list:
     """
