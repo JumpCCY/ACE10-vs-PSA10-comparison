@@ -1,8 +1,12 @@
 import requests
 import base64
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+import numpy as np
 
-CLIENT_ID = "[EBAY-CLIENT-ID]"
-CLIENT_SECRET = "[EBAY-CLIENT-SECRET]"
+
+CLIENT_ID = "[Client ID here]"
+CLIENT_SECRET = "[Client secret here]"
 BAD_KEYWORDS = {
     "contender",
     "likely",
@@ -27,12 +31,13 @@ def main():
     4. Displays the average prices and potential profit.
     """
     card_name = input("Card name: ")
+    card_name = card_name.strip()
     if not card_name:
         print("Please provide a card name.")
         return
     access_token = get_access_token()
     results_ACE10 = ebay_search(access_token, f"{card_name} ACE 10")
-    results_PSA10 = ebay_search(access_token, f"{card_name} PSA 10")
+    results_PSA10 = ebay_average_sold(f"{card_name} PSA 10")
     if results_ACE10 == 0:
         print(f"Average listing price for {card_name}")
         print(f"ACE 10: No results found")
@@ -118,10 +123,62 @@ def ebay_search(access_token: str, query: str):
     if query.endswith("ACE 10"):
         res = list(price_list.values())[0]
         return float(res)
-    elif query.endswith("PSA 10"):
-        return float(average_price)
 
-    return price_list
+def ebay_average_sold(query: str) -> float:
+    """
+    Docstring for ebay_average_sold
+    
+    :param query: search for recently sold item on eBay and return the average price
+    :type query: str
+    :return: Average price of recently 10 sold items
+    :rtype: float
+    """
+    
+    query = query.replace(" ", "+")
+    url = f"https://www.ebay.co.uk/sch/i.html?_nkw={query}+psa+10&_sacat=0&_from=R40&LH_Sold=1&rt=nc&LH_PrefLoc=1"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url)
+        page.wait_for_selector("li.s-card")
+        html = page.content()
+
+    soup = BeautifulSoup(html, "html.parser")
+    items = soup.select("li.s-card")
+
+    price_list = []
+    for item in items[:10]:
+        price = item.select_one(
+            "span.su-styled-text.positive.bold.large-1.s-card__price"
+        )
+        if price is not None:
+            price = price.get_text(strip=True)
+            price = price.replace(",", "")
+            price = price.replace("£", "")
+            price_list.append(float(price))
+
+    price_list = remove_outliners(price_list)
+    average_price = sum(price_list) / len(price_list)
+    return average_price
+
+def remove_outliners(price_list: list) -> list:
+    """
+    Docstring for remove_outliners
+
+    :param price_list: Remove outliers from the price list using the IQR method
+    :type price_list: list
+    :return: list without outliers
+    :rtype: list
+    """
+    data = np.array(price_list)
+    q1 = np.percentile(data, 25)
+    q3 = np.percentile(data, 75)
+    iqr = q3 - q1
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+
+    return [x for x in price_list if lower <= x <= upper]
 
 
 if __name__ == "__main__":
