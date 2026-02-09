@@ -5,10 +5,12 @@ from playwright.sync_api import sync_playwright
 import numpy as np
 import datetime
 import re
+import os
+from dotenv import load_dotenv, dotenv_values 
 
-
-CLIENT_ID = ""
-CLIENT_SECRET = ""
+load_dotenv()
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 BAD_KEYWORDS = {
     "contender",
     "likely",
@@ -21,11 +23,11 @@ BAD_KEYWORDS = {
     "psa9",
     "equivalent",
     "9.5",
+    "potential",
 }
 
-with open("top_chase.txt", "r") as file:
+with open("../data/top_chase.txt", "r") as file:
     TOP_CHASE = [line.strip() for line in file.readlines() if line.strip()]
-
 
 
 class EbayScraper:
@@ -90,8 +92,9 @@ class EbayScraper:
         return float(res)
 
     def ebay_average_sold(self, query: str) -> float:
-        card_number = re.search(r'\d+$', query).group()
+        card_number = re.search(r"\d+$", query).group()
         query = query.replace(" ", "+")
+        # PrefLoc=1 is for UK only
         url = f"https://www.ebay.co.uk/sch/i.html?_nkw={query}+psa+10&_sacat=0&_from=R40&LH_Sold=1&rt=nc&LH_PrefLoc=1"
 
         self.page.goto(url)
@@ -109,16 +112,21 @@ class EbayScraper:
             name = item.select_one("span.su-styled-text.primary.default").text.strip()
 
             # regex to match card number and make sure it is PSA 10 in the title
-            if re.search(rf"(?<!\d)#?\s?{card_number}(?:/\d+)?(?!\d)", name) and re.search(r"\bPSA[-\s]*10\b", name, re.IGNORECASE):
+            if (
+                re.search(rf"(?<!\d)#?\s?{card_number}(?:/\d+)?(?!\d)", name)
+                and re.search(r"\bPSA[-\s]*10\b", name, re.IGNORECASE)
+                and not any(bad in name.lower() for bad in BAD_KEYWORDS)
+            ):
                 price = price.get_text(strip=True)
                 price = price.replace(",", "")
                 price = price.replace("£", "")
                 price_list[name] = float(price)
 
+        if not price_list:
+            return None
         price_list = remove_outliners(list(price_list.values()))
         average_price = sum(price_list) / len(price_list)
         return round(average_price, 2)
-
 
 
 def scrape_all():
@@ -133,9 +141,9 @@ def scrape_all():
     search_instance = EbayScraper(access_token)
     search_instance.start()
 
-    
     list_of_cards = []
     for card_name in TOP_CHASE:
+        print(f"fetching price for {card_name}...")
         results_ACE10 = search_instance.ebay_search_ace10(f"{card_name} ACE 10")
         results_PSA10 = search_instance.ebay_average_sold(f"{card_name}")
         card = {
@@ -149,14 +157,17 @@ def scrape_all():
             ),
         }
         list_of_cards.append(card)
+        print(f"{card_name} -- ✅")
 
-
-        card_prices = {"total_cards": len(TOP_CHASE),
-                   "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                   "cards": list_of_cards}
+    card_prices = {
+        "total_cards": len(TOP_CHASE),
+        "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "cards": list_of_cards,
+    }
 
     search_instance.stop()
 
+    print("✅✅ All done ✅✅")
     return card_prices
 
 
@@ -206,3 +217,5 @@ def remove_outliners(price_list: list) -> list:
 
 if __name__ == "__main__":
     print(scrape_all())
+    
+

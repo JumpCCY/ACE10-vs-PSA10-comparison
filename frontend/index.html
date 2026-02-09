@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>
+            test
+        </title>
+    </head>
+    <body>
+        <h1>Card List</h1>
+        <pre id="display">Fetching data...</pre>
+        <script>
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/cards');
+                const data = await res.json();
+                const display = document.getElementById('display');
+
+                if (data.message) {
+                    display.innerText = "Status: " + data.message;
+                    setTimeout(fetchData, 2000);
+                } else {
+                    // JSON.stringify(data, null, 2) adds the 2-space indentation
+                    display.innerText = JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                document.getElementById('display').innerText = "Error: " + err;
+            }
+        }
+        fetchData();
+        </script>
+    </body>
+</html>
