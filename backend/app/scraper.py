@@ -7,6 +7,10 @@ import datetime
 import re
 import os
 from dotenv import load_dotenv, dotenv_values 
+import csv
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOPCHASE_PATH = os.path.join(BASE_DIR, "../data/top_chase.txt")
 
 load_dotenv()
 CLIENT_ID = os.getenv('CLIENT_ID')
@@ -26,8 +30,31 @@ BAD_KEYWORDS = {
     "potential",
 }
 
-with open("../data/top_chase.txt", "r") as file:
-    TOP_CHASE = [line.strip() for line in file.readlines() if line.strip()]
+def load_cards_from_csv(path: str) -> list:
+    """
+    Load cards from CSV file and return a list of search query strings
+    combining Card Name and Number columns.
+ 
+    :param path: path to the CSV file
+    :type path: str
+    :return: list of card query strings e.g. ["Mega Lucario ex 188", ...]
+    :rtype: list
+    """
+    cards = []
+    global set_names
+    set_names = []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row["Card Name"].strip()
+            number = row["Number"].strip()
+            set_name = row["Set Name"].strip()
+            cards.append(f"{name} {number}")
+            set_names.append(set_name)
+    return cards
+ 
+TOP_CHASE = load_cards_from_csv(TOPCHASE_PATH)
+ 
 
 
 class EbayScraper:
@@ -95,7 +122,7 @@ class EbayScraper:
         card_number = re.search(r"\d+$", query).group()
         query = query.replace(" ", "+")
         # PrefLoc=1 is for UK only
-        url = f"https://www.ebay.co.uk/sch/i.html?_nkw={query}+psa+10&_sacat=0&_from=R40&LH_Sold=1&rt=nc&LH_PrefLoc=1"
+        url = f"https://www.ebay.co.uk/sch/i.html?_nkw={query}+psa+10&_sacat=0&_from=R40&LH_Sold=1"
 
         self.page.goto(url)
         self.page.wait_for_selector("li.s-card")
@@ -104,7 +131,10 @@ class EbayScraper:
         soup = BeautifulSoup(html, "html.parser")
         items = soup.select("li.s-card")
 
+
+       
         price_list = {}
+        
         for item in items[:10]:
             price = item.select_one(
                 "span.su-styled-text.positive.bold.large-1.s-card__price"
@@ -124,7 +154,10 @@ class EbayScraper:
 
         if not price_list:
             return None
+        
         price_list = remove_outliners(list(price_list.values()))
+
+        
         average_price = sum(price_list) / len(price_list)
         return round(average_price, 2)
 
@@ -136,6 +169,8 @@ def scrape_all():
     2. Retrieves an access token for the eBay API.
     3. Searches for ACE 10 and PSA 10 prices for the given card.
     4. Displays the average prices and potential profit.
+
+    :return: dict
     """
     access_token = get_access_token()
     search_instance = EbayScraper(access_token)
@@ -148,6 +183,7 @@ def scrape_all():
         results_PSA10 = search_instance.ebay_average_sold(f"{card_name}")
         card = {
             "card_name": card_name,
+            "set_name": set_names[TOP_CHASE.index(card_name)],
             "ACE 10": results_ACE10,
             "PSA 10": results_PSA10,
             "Potential Profit": (

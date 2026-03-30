@@ -1,32 +1,41 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>
-            test
-        </title>
-    </head>
-    <body>
-        <h1>Card List</h1>
-        <pre id="display">Fetching data...</pre>
-        <script>
-        async function fetchData() {
-            try {
-                const res = await fetch('/api/cards');
-                const data = await res.json();
-                const display = document.getElementById('display');
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chase Tracker — PSA 10 vs ACE 10</title>
+    <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
 
-                if (data.message) {
-                    display.innerText = "Status: " + data.message;
-                    setTimeout(fetchData, 2000);
-                } else {
-                    // JSON.stringify(data, null, 2) adds the 2-space indentation
-                    display.innerText = JSON.stringify(data, null, 2);
-                }
-            } catch (err) {
-                document.getElementById('display').innerText = "Error: " + err;
-            }
-        }
-        fetchData();
-        </script>
-    </body>
+<header>
+  <div>
+    <div class="logo-text">Grade Flip Tracker</div>
+    <div class="logo-sub">PSA 10 vs ACE 10 · eBay UK</div>
+  </div>
+  <div class="header-meta">
+    <div class="last-updated" id="lastUpdated">—</div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input type="text" id="searchInput" placeholder="Search card name…" />
+  </div>
+  <div class="sort-group">
+    <button class="sort-btn" data-sort="default">Default</button>
+    <button class="sort-btn active" data-sort="psa_desc">PSA ↓</button>
+    <button class="sort-btn" data-sort="psa_asc">PSA ↑</button>
+    <button class="sort-btn" data-sort="profit_desc">Profit ↓</button>
+    <button class="sort-btn" data-sort="profit_asc">Profit ↑</button>
+  </div>
+</div>
+
+<div id="app"></div>
+
+<script src="scripts.js"></script>
+</body>
 </html>
